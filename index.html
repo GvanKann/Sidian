@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Screen Recorder App</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background-color: #1a1a1a; 
+            color: #ffffff; 
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1 {
+            color: #bb86fc; 
+            margin-bottom: 20px;
+        }
+
+        #controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #bb86fc; 
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #9a67ea; 
+        }
+
+        #recordingIndicator {
+            display: none;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        #recordingIndicator.recording {
+            background-color: #ff4444; 
+            color: #ffffff;
+        }
+
+        #recordingIndicator.paused {
+            background-color: #ffbb33; 
+            color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        const { ipcRenderer } = require('electron');
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        async function startRecording() {
+            try {
+                // Request screen sources from the main process
+                const sources = await ipcRenderer.invoke('get-sources');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                        mandatory: {
+                            chromeMediaSource: 'desktop',
+                            chromeMediaSourceId: sources[0].id,
+                        },
+                    },
+                });
+
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = function(event) {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = function() {
+                    const blob = new Blob(recordedChunks, { type: "video/webm" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.style.display = "none";
+                    a.href = url;
+                    a.download = "screen_recording.webm";
+                    document.body.appendChild(a);
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    document.getElementById('recordingIndicator').style.display = 'none';
+                    recordedChunks = []; 
+                };
+
+                mediaRecorder.onpause = function() {
+                    const indicator = document.getElementById('recordingIndicator');
+                    indicator.textContent = 'Recording Paused';
+                    indicator.className = 'paused'; 
+                };
+
+                mediaRecorder.onresume = function() {
+                    const indicator = document.getElementById('recordingIndicator');
+                    indicator.textContent = 'Recording...';
+                    indicator.className = 'recording'; 
+                };
+
+                mediaRecorder.start();
+                const indicator = document.getElementById('recordingIndicator');
+                indicator.textContent = 'Recording...';
+                indicator.className = 'recording';
+                indicator.style.display = 'block';
+            } catch (error) {
+                console.error('Error starting recording:', error);
+            }
+        }
+
+        function pauseRecording() {
+            if (mediaRecorder) {
+                if (mediaRecorder.state === "recording") {
+                    mediaRecorder.pause();
+                } else if (mediaRecorder.state === "paused") {
+                    mediaRecorder.resume();
+                }
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+        }
+    </script>
+
+    <h1>Screen Recorder App</h1>
+
+    <div id="controls">
+        <button onclick="startRecording()">Start Recording</button>
+        <button onclick="pauseRecording()">Pause/Resume Recording</button>
+        <button onclick="stopRecording()">Stop Recording</button>
+    </div>
+
+    <div id="recordingIndicator">Recording...</div>
+</body>
+</html>

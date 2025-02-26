@@ -1,0 +1,32 @@
+{
+  "name": "proj2",
+  "version": "1.0.0",
+  "main": "index.js",
+  
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+
+  "dependencies": {
+  },
+
+  "devDependencies": {
+    "electron-builder": "^25.1.8"
+  },
+
+  "build": {
+    "appId": "gvankann.github.io",
+    "productName": "Sidian",
+    "win": {
+      "target": "nsis",
+      "icon":"assets/iconsidian.ico"
+    }
+  }
+}
